@@ -1,3 +1,5 @@
+import kotlin.reflect.jvm.internal.impl.types.checker.KotlinTypeChecker
+
 plugins {
     id "com.android.application"
     // START: FlutterFire Configuration
@@ -52,6 +54,7 @@ android {
         targetSdkVersion flutter.targetSdkVersion
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
+        multiDexEnabled true
     }
 
     buildTypes {
@@ -67,4 +70,6 @@ flutter {
     source '../..'
 }
 
-dependencies {}
+dependencies {
+    implementation 'com.android.support:multidex:1.0.3'
+}
