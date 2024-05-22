@@ -1,4 +1,6 @@
 class InvoiceItem {
+  final String useremail;
+  final String id;
   final String name;
   final String description;
   final double unitPrice;
@@ -8,6 +10,8 @@ class InvoiceItem {
   final bool taxApplicable;
 
   InvoiceItem({
+    required this.useremail,
+    required this.id,
     required this.name,
     required this.description,
     required this.unitPrice,

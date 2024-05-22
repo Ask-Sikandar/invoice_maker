@@ -1,4 +1,5 @@
 class Business {
+  String useremail;
   String name;
   String address;
   String phoneNumber;
@@ -6,6 +7,7 @@ class Business {
   String abn; // Added ABN field
 
   Business({
+    required this.useremail,
     required this.name,
     required this.address,
     required this.phoneNumber,
@@ -16,6 +18,7 @@ class Business {
   // Factory constructor for creating a Business object from a map
   factory Business.fromJson(Map<String, dynamic> json) {
     return Business(
+      useremail: json['useremail'],
       name: json['name'],
       address: json['address'],
       phoneNumber: json['phoneNumber'],
@@ -27,6 +30,7 @@ class Business {
   // Method to convert Business object to a map
   Map<String, dynamic> toJson() {
     return {
+      'useremail': useremail,
       'name': name,
       'address': address,
       'phoneNumber': phoneNumber,

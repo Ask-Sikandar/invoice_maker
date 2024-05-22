@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:invoice_maker/providers/ui.dart';
 import 'package:invoice_maker/ui/components/home_page_icon_buttons.dart';
 import 'package:invoice_maker/ui/home_screens/create_invoice_screen.dart';
+import 'package:invoice_maker/ui/home_screens/profile_page.dart';
 import '../../providers/auth_provider.dart';
 
 class Home extends ConsumerStatefulWidget {
@@ -43,7 +44,7 @@ class _HomeState extends ConsumerState<Home> {
           ref.read(homeScreenCounterProvider.notifier).state = 3;
         }, icon: const Icon(Icons.inventory), label: 'Products/Services'),
         HomePageIconButtons(
-            onPressed: () {}, icon: const Icon(Icons.person),
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => ProfilePage())), icon: const Icon(Icons.person),
             label: data.currentUser!.displayName ?? 'Profile'),
         HomePageIconButtons(onPressed: () {}, icon: const Icon(Icons.settings), label: 'Settings')
       ],

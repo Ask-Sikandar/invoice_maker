@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Client {
   final String id;
+  final String useremail;
   final String name;
   final String address;
   final String email;
@@ -9,6 +10,7 @@ class Client {
 
   Client({
     required this.id,
+    required this.useremail,
     required this.name,
     required this.address,
     required this.email,
@@ -20,6 +22,7 @@ class Client {
     final data = doc.data() as Map<String, dynamic>;
     return Client(
       id: doc.id,
+      useremail: data['useremail'] ?? '',
       name: data['name'] ?? '',
       address: data['address'] ?? '',
       email: data['email'] ?? '',

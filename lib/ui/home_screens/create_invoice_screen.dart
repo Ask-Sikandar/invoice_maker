@@ -1,7 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
+import 'package:invoice_maker/providers/auth_provider.dart';
 import '../../models/invoice_item.dart';
 import '../add_business_page.dart';
 import 'create_client.dart';
@@ -30,38 +31,48 @@ class _AddInvoiceScreenState extends ConsumerState<AddInvoiceScreen> {
 
   bool _dataChanged = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _addItemController();
-  }
+  void _addItem() async {
+    if (_itemDescController.text.isNotEmpty &&
+        _unitPriceController.text.isNotEmpty &&
+        _quantityController.text.isNotEmpty &&
+        _discountController.text.isNotEmpty) {
+      final user = ref.read(fireBaseAuthProvider).currentUser!;
+      String itemId = await _getOrCreateItem(_itemDescController.text, user.email!);
 
-  void _addItemController() {
-    final item = InvoiceItem(
+      final item = InvoiceItem(
+        id: itemId,
         name: _itemNameController.text,
         description: _itemDescController.text,
         unitPrice: double.parse(_unitPriceController.text),
         quantity: int.parse(_quantityController.text),
         isService: _isService,
         discount: double.parse(_discountController.text),
-        taxApplicable: _taxApplicable);
-    _items.add(item);
-    setState(() {
-      _itemNameController.clear(); // Reset the name
-      _itemDescController.clear(); // Reset the description
-      _unitPriceController.clear(); // Reset the unit price
-      _quantityController.clear(); // Reset the quantity
-      _isService = false; // Reset the service flag
-      _discountController.clear(); // Reset the discount
-      _taxApplicable = false; // Reset the tax applicability
-    });
+        taxApplicable: _taxApplicable,
+        useremail: user.email!,
+      );
+
+      setState(() {
+        _items.add(item);
+        _itemNameController.clear();
+        _itemDescController.clear();
+        _unitPriceController.clear();
+        _quantityController.clear();
+        _discountController.clear();
+        _isService = false;
+        _taxApplicable = false;
+      });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Please fill all item fields'),
+      ));
+    }
   }
 
-
-  Future<String> _getOrCreateClient(String name) async {
+  Future<String> _getOrCreateClient(String name, String userEmail) async {
     final clientQuery = await FirebaseFirestore.instance
         .collection('clients')
         .where('name', isEqualTo: name)
+        .where('useremail', isEqualTo: userEmail)
         .limit(1)
         .get();
 
@@ -69,7 +80,6 @@ class _AddInvoiceScreenState extends ConsumerState<AddInvoiceScreen> {
       return clientQuery.docs.first.id;
     }
 
-    // If client doesn't exist, navigate to add client screen and return new client ID
     final newClientRef = await Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => AddClientScreen(clientName: name)),
@@ -77,10 +87,11 @@ class _AddInvoiceScreenState extends ConsumerState<AddInvoiceScreen> {
     return newClientRef.id;
   }
 
-  Future<String> _getOrCreateBusiness(String name) async {
+  Future<String> _getOrCreateBusiness(String name, String userEmail) async {
     final businessQuery = await FirebaseFirestore.instance
         .collection('businesses')
         .where('name', isEqualTo: name)
+        .where('useremail', isEqualTo: userEmail)
         .limit(1)
         .get();
 
@@ -88,7 +99,6 @@ class _AddInvoiceScreenState extends ConsumerState<AddInvoiceScreen> {
       return businessQuery.docs.first.id;
     }
 
-    // If business doesn't exist, navigate to add business screen and return new business ID
     final newBusinessRef = await Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => AddBusinessScreen(businessName: name)),
@@ -96,47 +106,46 @@ class _AddInvoiceScreenState extends ConsumerState<AddInvoiceScreen> {
     return newBusinessRef.id;
   }
 
-  Future<String> _getOrCreateItem(String description, int index) async {
+  Future<String> _getOrCreateItem(String description, String userEmail) async {
     final itemQuery = await FirebaseFirestore.instance
         .collection('items')
         .where('description', isEqualTo: description)
+        .where('useremail', isEqualTo: userEmail)
         .limit(1)
         .get();
 
     if (itemQuery.docs.isNotEmpty) {
-      final itemData = itemQuery.docs.first.data();
-      setState(() {
-        _unitPriceControllers[index].text = itemData['unitPrice'].toString();
-        _quantityControllers[index].text = "1";
-        _discountControllers[index].text = itemData['discount'].toString();
-        _taxApplicableControllers[index] = itemData['taxApplicable'];
-      });
       return itemQuery.docs.first.id;
     }
 
-    // If item doesn't exist, create a new item document
     final newItemRef = await FirebaseFirestore.instance.collection('items').add({
+      'useremail': userEmail,
+      'name': _itemNameController.text,
       'description': description,
-      'unitPrice': double.parse(_unitPriceControllers[index].text),
-      'discount': double.parse(_discountControllers[index].text),
-      'taxApplicable': _taxApplicableControllers[index],
+      'unitPrice': double.parse(_unitPriceController.text),
+      'discount': double.parse(_discountController.text),
+      'taxApplicable': _taxApplicable,
     });
 
     return newItemRef.id;
   }
 
   Future<void> _addInvoice() async {
+    final user = ref.read(fireBaseAuthProvider).currentUser!;
+    if (_items.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Please add at least one item'),
+      ));
+      return;
+    }
+
     if (_formKey.currentState!.validate()) {
-      final clientId = await _getOrCreateClient(_clientController.text);
-      final businessId = await _getOrCreateBusiness(_businessController.text);
-      final itemIds = await Future.wait(
-        _itemControllers.asMap().entries.map((entry) async {
-          int index = entry.key;
-          return await _getOrCreateItem(entry.value.text, index);
-        }),
-      );
+      final clientId = await _getOrCreateClient(_clientController.text, user.email!);
+      final businessId = await _getOrCreateBusiness(_businessController.text, user.email!);
+      final itemIds = _items.map((item) => item.id).toList();
 
       final invoice = {
+        'useremail': user.email,
         'clientId': clientId,
         'businessId': businessId,
         'items': itemIds,
@@ -154,18 +163,11 @@ class _AddInvoiceScreenState extends ConsumerState<AddInvoiceScreen> {
   void dispose() {
     _clientController.dispose();
     _businessController.dispose();
-    for (var controller in _itemControllers) {
-      controller.dispose();
-    }
-    for (var controller in _unitPriceControllers) {
-      controller.dispose();
-    }
-    for (var controller in _quantityControllers) {
-      controller.dispose();
-    }
-    for (var controller in _discountControllers) {
-      controller.dispose();
-    }
+    _itemNameController.dispose();
+    _itemDescController.dispose();
+    _unitPriceController.dispose();
+    _quantityController.dispose();
+    _discountController.dispose();
     _taxRateController.dispose();
     super.dispose();
   }
@@ -195,6 +197,14 @@ class _AddInvoiceScreenState extends ConsumerState<AddInvoiceScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final user = ref.watch(fireBaseAuthProvider).currentUser;
+    if (user == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Add Invoice')),
+        body: const Center(child: Text('No user logged in')),
+      );
+    }
+
     return WillPopScope(
       onWillPop: _onWillPop,
       child: Scaffold(
@@ -217,6 +227,7 @@ class _AddInvoiceScreenState extends ConsumerState<AddInvoiceScreen> {
                     final clients = await FirebaseFirestore.instance
                         .collection('clients')
                         .where('name', isGreaterThanOrEqualTo: textEditingValue.text)
+                        .where('useremail', isEqualTo: user.email)
                         .where('name', isLessThanOrEqualTo: '${textEditingValue.text}\uf8ff')
                         .get();
                     return clients.docs.map((doc) => doc.data()['name'].toString()).toList();
@@ -234,7 +245,7 @@ class _AddInvoiceScreenState extends ConsumerState<AddInvoiceScreen> {
                           onTap: () async {
                             final newClient = await Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (context) => AddClientScreen(clientName: _clientController.text,)),
+                              MaterialPageRoute(builder: (context) => AddClientScreen(clientName: _clientController.text)),
                             );
                             if (newClient != null) {
                               _clientController.text = newClient.name;
@@ -263,6 +274,7 @@ class _AddInvoiceScreenState extends ConsumerState<AddInvoiceScreen> {
                     final businesses = await FirebaseFirestore.instance
                         .collection('businesses')
                         .where('name', isGreaterThanOrEqualTo: textEditingValue.text)
+                        .where('useremail', isEqualTo: user.email)
                         .where('name', isLessThanOrEqualTo: '${textEditingValue.text}\uf8ff')
                         .get();
                     return businesses.docs.map((doc) => doc.data()['name'].toString()).toList();
@@ -280,7 +292,7 @@ class _AddInvoiceScreenState extends ConsumerState<AddInvoiceScreen> {
                           onTap: () async {
                             final newBusiness = await Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (context) => AddBusinessScreen(businessName: _businessController.text,)),
+                              MaterialPageRoute(builder: (context) => AddBusinessScreen(businessName: _businessController.text)),
                             );
                             if (newBusiness != null) {
                               _businessController.text = newBusiness.name;
@@ -300,86 +312,58 @@ class _AddInvoiceScreenState extends ConsumerState<AddInvoiceScreen> {
                   },
                 ),
                 const SizedBox(height: 16),
-                Text('Item Details', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const Text('Item Details', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 ..._items.map((item) {
                   return ListTile(
                     title: Text('${item.description} - ${item.quantity} x \$${item.unitPrice.toStringAsFixed(2)}'),
                     subtitle: Text('Discount: ${item.discount}%\nTax Applicable: ${item.taxApplicable ? "Yes" : "No"}'),
                   );
                 }).toList(),
-                const Text('Item Details', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                ..._itemControllers.asMap().entries.map((entry) {
-                  int index = entry.key;
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Autocomplete<String>(
-                        optionsBuilder: (TextEditingValue textEditingValue) async {
-                          if (textEditingValue.text.isEmpty) {
-                            return [];
-                          }
-                          final items = await FirebaseFirestore.instance
-                              .collection('items')
-                              .where('description', isGreaterThanOrEqualTo: textEditingValue.text)
-                              .where('description', isLessThanOrEqualTo: '${textEditingValue.text}\uf8ff')
-                              .get();
-                          return items.docs.map((doc) => doc.data()['description'].toString()).toList();
-                        },
-                        onSelected: (String selection) {
-                          _itemControllers[index].text = selection;
-                          _getOrCreateItem(selection, index);
-                        },
-                        fieldViewBuilder: (BuildContext context, TextEditingController fieldTextEditingController, FocusNode focusNode, VoidCallback onFieldSubmitted) {
-                          return TextFormField(
-                            controller: fieldTextEditingController,
-                            focusNode: focusNode,
-                            decoration: const InputDecoration(labelText: 'Item Description'),
-                            validator: (value) => value!.isEmpty ? 'Please enter item description' : null,
-                          );
-                        },
-                      ),
-                      TextFormField(
-                        controller: _unitPriceControllers[index],
-                        decoration: const InputDecoration(labelText: 'Unit Price'),
-                        keyboardType: TextInputType.number,
-                        validator: (value) => value!.isEmpty ? 'Please enter unit price' : null,
-                      ),
-                      TextFormField(
-                        controller: _quantityControllers[index],
-                        decoration: const InputDecoration(labelText: 'Quantity'),
-                        keyboardType: TextInputType.number,
-                        validator: (value) => value!.isEmpty ? 'Please enter quantity' : null,
-                      ),
-                      TextFormField(
-                        controller: _discountControllers[index],
-                        decoration: const InputDecoration(labelText: 'Discount (%)'),
-                        keyboardType: TextInputType.number,
-                        validator: (value) => value!.isEmpty ? 'Please enter discount' : null,
-                      ),
-                      Row(
-                        children: [
-                          const Text('Tax Applicable'),
-                          Checkbox(
-                            value: _taxApplicableControllers[index],
-                            onChanged: (bool? value) {
-                              setState(() {
-                                _taxApplicableControllers[index] = value!;
-                              });
-                            },
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-                  );
-                }),
+                TextFormField(
+                  controller: _itemNameController,
+                  decoration: const InputDecoration(labelText: 'Item Name'),
+                  validator: (value) => value!.isEmpty && _items.isEmpty ? 'Please enter item Name' : null,
+                ),
+                TextFormField(
+                  controller: _itemDescController,
+                  decoration: const InputDecoration(labelText: 'Item Description'),
+                  validator: (value) => value!.isEmpty && _items.isEmpty ? 'Please enter item description' : null,
+                ),
+                TextFormField(
+                  controller: _unitPriceController,
+                  decoration: const InputDecoration(labelText: 'Unit Price'),
+                  keyboardType: TextInputType.number,
+                  validator: (value) => value!.isEmpty && _items.isEmpty ? 'Please enter unit price' : null,
+                ),
+                TextFormField(
+                  controller: _quantityController,
+                  decoration: const InputDecoration(labelText: 'Quantity'),
+                  keyboardType: TextInputType.number,
+                  validator: (value) => value!.isEmpty && _items.isEmpty ? 'Please enter quantity' : null,
+                ),
+                TextFormField(
+                  controller: _discountController,
+                  decoration: const InputDecoration(labelText: 'Discount (%)'),
+                  keyboardType: TextInputType.number,
+                  validator: (value) => value!.isEmpty && _items.isEmpty ? 'Please enter discount' : null,
+                ),
+                Row(
+                  children: [
+                    const Text('Tax Applicable'),
+                    Checkbox(
+                      value: _taxApplicable,
+                      onChanged: (bool? value) {
+                        setState(() {
+                          _taxApplicable = value!;
+                        });
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
                 TextButton(
-                  onPressed: () {
-                    setState(() {
-                      _addItemController();
-                    });
-                  },
-                  child: const Text('Add Another Item'),
+                  onPressed: _addItem,
+                  child: const Text('Add Item'),
                 ),
                 const SizedBox(height: 16),
                 TextFormField(

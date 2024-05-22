@@ -1,11 +1,28 @@
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class AddClientScreen extends ConsumerWidget {
   final String? clientName;
-
+  Future<dynamic> _addClient(context, String name, String email, String phone) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final clientRef = await FirebaseFirestore.instance.collection('clients').add({
+        'name': name,
+        'email': email,
+        'phone': phone,
+        'userId': user.uid,
+        'createdAt': Timestamp.now(),
+      }).then((_) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Client added')));
+      }).catchError((error){
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed due to error $error')));
+      });
+      return clientRef;
+    }
+  }
   const AddClientScreen({super.key, this.clientName});
 
   @override
@@ -42,18 +59,21 @@ class AddClientScreen extends ConsumerWidget {
             // Add other client fields
             ElevatedButton(
               onPressed: () async {
-                final newClientRef = await FirebaseFirestore.instance.collection('clients').add({
-                  'name': clientNameController.text,
-                  'email': clientEmailController.text,
-                  'phone': clientPhoneController.text,
-                  'address': clientAddressController.text,
-                  // Add other fields here
-                }).then((_) {
+                final user = FirebaseAuth.instance.currentUser;
+                if (user != null) {
+                  final clientRef = await FirebaseFirestore.instance.collection('clients').add({
+                    'name': clientNameController.text,
+                    'email': clientEmailController.text,
+                    'phone': clientPhoneController.text,
+                    'useremail': user.email,
+                    'createdAt': Timestamp.now(),
+                  }).then((_) {
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Client added')));
-                }).catchError((error) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed due to error $error')));
-                });
-                Navigator.pop(context, newClientRef);
+                  }).catchError((error){
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed due to error $error')));
+                  });
+                  Navigator.pop(context, clientRef);
+                }
               },
               child: const Text('Add Client'),
             ),

@@ -1,20 +1,22 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:invoice_maker/providers/auth_provider.dart';
 
 
-class AddBusinessScreen extends StatelessWidget {
+class AddBusinessScreen extends ConsumerWidget {
   final String? businessName;
 
   const AddBusinessScreen({super.key, this.businessName});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final abnController = TextEditingController();
     final businessNameController = TextEditingController(text: businessName);
     final businessAddressController = TextEditingController();
     final businessEmailController = TextEditingController();
     final businessPhoneController = TextEditingController();
-
+    final data = ref.watch(fireBaseAuthProvider);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Add New Business'),
@@ -49,6 +51,7 @@ class AddBusinessScreen extends StatelessWidget {
             ElevatedButton(
               onPressed: () async {
                 final newBusinessRef = await FirebaseFirestore.instance.collection('businesses').add({
+                  'useremail' : data.currentUser!.email,
                   'abn' : abnController.text,
                   'name': businessNameController.text,
                   'email' : businessEmailController.text,
