@@ -1,9 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:invoice_maker/providers/auth_provider.dart';
 import '../../models/invoice_item.dart';
+import '../../providers/invoice_provider.dart';
 import '../add_business_page.dart';
 import 'create_client.dart';
 
@@ -37,10 +37,8 @@ class _AddInvoiceScreenState extends ConsumerState<AddInvoiceScreen> {
         _quantityController.text.isNotEmpty &&
         _discountController.text.isNotEmpty) {
       final user = ref.read(fireBaseAuthProvider).currentUser!;
-      String itemId = await _getOrCreateItem(_itemDescController.text, user.email!);
-
-      final item = InvoiceItem(
-        id: itemId,
+      final newItem = InvoiceItem(
+        id: '',
         name: _itemNameController.text,
         description: _itemDescController.text,
         unitPrice: double.parse(_unitPriceController.text),
@@ -51,8 +49,9 @@ class _AddInvoiceScreenState extends ConsumerState<AddInvoiceScreen> {
         useremail: user.email!,
       );
 
+      final itemId = await ref.read(addItemProvider(newItem).future);
       setState(() {
-        _items.add(item);
+        _items.add(newItem.copyWith(id: itemId));
         _itemNameController.clear();
         _itemDescController.clear();
         _unitPriceController.clear();
@@ -68,68 +67,6 @@ class _AddInvoiceScreenState extends ConsumerState<AddInvoiceScreen> {
     }
   }
 
-  Future<String> _getOrCreateClient(String name, String userEmail) async {
-    final clientQuery = await FirebaseFirestore.instance
-        .collection('clients')
-        .where('name', isEqualTo: name)
-        .where('useremail', isEqualTo: userEmail)
-        .limit(1)
-        .get();
-
-    if (clientQuery.docs.isNotEmpty) {
-      return clientQuery.docs.first.id;
-    }
-
-    final newClientRef = await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => AddClientScreen(clientName: name)),
-    );
-    return newClientRef.id;
-  }
-
-  Future<String> _getOrCreateBusiness(String name, String userEmail) async {
-    final businessQuery = await FirebaseFirestore.instance
-        .collection('businesses')
-        .where('name', isEqualTo: name)
-        .where('useremail', isEqualTo: userEmail)
-        .limit(1)
-        .get();
-
-    if (businessQuery.docs.isNotEmpty) {
-      return businessQuery.docs.first.id;
-    }
-
-    final newBusinessRef = await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => AddBusinessScreen(businessName: name)),
-    );
-    return newBusinessRef.id;
-  }
-
-  Future<String> _getOrCreateItem(String description, String userEmail) async {
-    final itemQuery = await FirebaseFirestore.instance
-        .collection('items')
-        .where('description', isEqualTo: description)
-        .where('useremail', isEqualTo: userEmail)
-        .limit(1)
-        .get();
-
-    if (itemQuery.docs.isNotEmpty) {
-      return itemQuery.docs.first.id;
-    }
-
-    final newItemRef = await FirebaseFirestore.instance.collection('items').add({
-      'useremail': userEmail,
-      'name': _itemNameController.text,
-      'description': description,
-      'unitPrice': double.parse(_unitPriceController.text),
-      'discount': double.parse(_discountController.text),
-      'taxApplicable': _taxApplicable,
-    });
-
-    return newItemRef.id;
-  }
-
   Future<void> _addInvoice() async {
     final user = ref.read(fireBaseAuthProvider).currentUser!;
     if (_items.isEmpty) {
@@ -140,8 +77,16 @@ class _AddInvoiceScreenState extends ConsumerState<AddInvoiceScreen> {
     }
 
     if (_formKey.currentState!.validate()) {
-      final clientId = await _getOrCreateClient(_clientController.text, user.email!);
-      final businessId = await _getOrCreateBusiness(_businessController.text, user.email!);
+      final clientId = await ref.read(getClientProvider({
+        'name': _clientController.text,
+        'userEmail': user.email!,
+        'context': context
+      }).future);
+      final businessId = await ref.read(getBusinessProvider({
+        'name': _businessController.text,
+        'userEmail': user.email!,
+        'context': context
+      }).future);
       final itemIds = _items.map((item) => item.id).toList();
 
       final invoice = {
@@ -153,7 +98,7 @@ class _AddInvoiceScreenState extends ConsumerState<AddInvoiceScreen> {
         'createdAt': Timestamp.now(),
       };
 
-      await FirebaseFirestore.instance.collection('invoices').add(invoice);
+      await ref.read(addInvoiceProvider(invoice).future);
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invoice added')));
       Navigator.pop(context);
     }
@@ -174,7 +119,7 @@ class _AddInvoiceScreenState extends ConsumerState<AddInvoiceScreen> {
 
   Future<bool> _onWillPop() async {
     if (_dataChanged) {
-      return await showDialog(
+      final shouldPop = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
           title: const Text('Unsaved Changes'),
@@ -190,7 +135,8 @@ class _AddInvoiceScreenState extends ConsumerState<AddInvoiceScreen> {
             ),
           ],
         ),
-      ) ?? false;
+      );
+      return shouldPop ?? false;
     }
     return true;
   }
@@ -318,7 +264,7 @@ class _AddInvoiceScreenState extends ConsumerState<AddInvoiceScreen> {
                     title: Text('${item.description} - ${item.quantity} x \$${item.unitPrice.toStringAsFixed(2)}'),
                     subtitle: Text('Discount: ${item.discount}%\nTax Applicable: ${item.taxApplicable ? "Yes" : "No"}'),
                   );
-                }).toList(),
+                }),
                 TextFormField(
                   controller: _itemNameController,
                   decoration: const InputDecoration(labelText: 'Item Name'),

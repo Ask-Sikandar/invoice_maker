@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,6 +19,7 @@ class _HomeState extends ConsumerState<Home> {
 
   @override
   Widget build(BuildContext) {
+    final profileData = FirebaseAuth.instance;
     final data = ref.watch(fireBaseAuthProvider);
     return GridView.count(
       padding: const EdgeInsets.all(20),
@@ -44,8 +46,8 @@ class _HomeState extends ConsumerState<Home> {
           ref.read(homeScreenCounterProvider.notifier).state = 3;
         }, icon: const Icon(Icons.inventory), label: 'Products/Services'),
         HomePageIconButtons(
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => ProfilePage())), icon: const Icon(Icons.person),
-            label: data.currentUser!.displayName ?? 'Profile'),
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfilePage())), icon: const Icon(Icons.person),
+            label:  'Profile ${profileData.currentUser!.displayName}'),
         HomePageIconButtons(onPressed: () {}, icon: const Icon(Icons.settings), label: 'Settings')
       ],
     );

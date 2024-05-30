@@ -21,5 +21,28 @@ class InvoiceItem {
     required this.taxApplicable,
   });
 
+  InvoiceItem copyWith({
+    String? id,
+    String? name,
+    String? description,
+    double? unitPrice,
+    int? quantity,
+    bool? isService,
+    double? discount,
+    bool? taxApplicable,
+    String? useremail,
+  }) {
+    return InvoiceItem(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      unitPrice: unitPrice ?? this.unitPrice,
+      quantity: quantity ?? this.quantity,
+      isService: isService ?? this.isService,
+      discount: discount ?? this.discount,
+      taxApplicable: taxApplicable ?? this.taxApplicable,
+      useremail: useremail ?? this.useremail,
+    );
+  }
   double get total => unitPrice * quantity * (1 - discount / 100);
 }
