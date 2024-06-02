@@ -32,6 +32,31 @@ final addInvoiceProvider = FutureProvider.family<void, Map<String, dynamic>>((re
   final repo = ref.read(invoiceRepositoryProvider);
   await repo.addInvoice(invoice);
 });
+final searchServicesProvider = FutureProvider.family<List<InvoiceItem>, String>((ref, query) async {
+  final user = ref.read(fireBaseAuthProvider).currentUser!;
+  final servicesQuery = await FirebaseFirestore.instance
+      .collection('items')
+      .where('useremail', isEqualTo: user.email)
+      .where('name', isGreaterThanOrEqualTo: query)
+      .where('name', isLessThanOrEqualTo: '$query\uf8ff')
+      .get();
+
+  return servicesQuery.docs.map((doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return InvoiceItem(
+      id: doc.id,
+      name: data['name'] ?? 'No name',
+      description: data['description'] ?? 'No description',
+      unitPrice: (data['unitPrice'] ?? 0).toDouble(),
+      quantity: (data['quantity'] ?? 1) as int,
+      isService: data['isService'] ?? false,
+      discount: (data['discount'] ?? 0).toDouble(),
+      taxApplicable: data['taxApplicable'] ?? false,
+      useremail: data['useremail'] ?? '',
+    );
+  }).toList();
+});
+
 
 final invoicesProvider = StreamProvider<List<InvoiceDetails>>((ref) {
   final user = ref.watch(fireBaseAuthProvider).currentUser;

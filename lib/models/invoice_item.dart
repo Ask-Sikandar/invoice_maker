@@ -1,16 +1,15 @@
 class InvoiceItem {
-  final String useremail;
   final String id;
   final String name;
   final String description;
   final double unitPrice;
   final int quantity;
   final bool isService;
-  final double discount; // Discount in percentage (0-100)
+  final double discount;
   final bool taxApplicable;
+  final String useremail;
 
   InvoiceItem({
-    required this.useremail,
     required this.id,
     required this.name,
     required this.description,
@@ -19,6 +18,7 @@ class InvoiceItem {
     required this.isService,
     required this.discount,
     required this.taxApplicable,
+    required this.useremail,
   });
 
   InvoiceItem copyWith({
@@ -46,3 +46,6 @@ class InvoiceItem {
   }
   double get total => unitPrice * quantity * (1 - discount / 100);
 }
+
+
+

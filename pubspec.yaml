@@ -71,6 +71,7 @@ flutter_icons:
 flutter:
   assets:
     - assets/images/easy_invoice.png
+    - assets/images/invoice_samples/
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.

@@ -1,53 +1,62 @@
-import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:invoice_maker/models/invoice_item.dart';
+import 'package:invoice_maker/providers/auth_provider.dart';
 
-class ServicesScreen extends StatefulWidget {
+class ServicesScreen extends ConsumerWidget {
   const ServicesScreen({super.key});
 
   @override
-  State<ServicesScreen> createState() => _ServicesScreenState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(fireBaseAuthProvider).currentUser;
+    if (user == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Services')),
+        body: const Center(child: Text('No user logged in')),
+      );
+    }
 
-class _ServicesScreenState extends State<ServicesScreen> {
-  final User? user = FirebaseAuth.instance.currentUser;
+    final servicesStream = FirebaseFirestore.instance
+        .collection('items')
+        .where('useremail', isEqualTo: user.email)
+        .snapshots();
 
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Products and Services'),
-      ),
+      appBar: AppBar(title: const Text('Services')),
       body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('items')
-            .where('userId', isEqualTo: user?.uid)
-            .snapshots(),
+        stream: servicesStream,
         builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(child: Text('No products or services found.'));
-          }
-
-          final items = snapshot.data!.docs;
+          final services = snapshot.data!.docs.map((doc) {
+            final data = doc.data() as Map<String, dynamic>;
+            return InvoiceItem(
+              id: doc.id,
+              name: data['name'] ?? 'No name',
+              description: data['description'] ?? 'No description',
+              unitPrice: (data['unitPrice'] ?? 0).toDouble(),
+              quantity: (data['quantity'] ?? 1) as int,
+              isService: data['isService'] ?? false,
+              discount: (data['discount'] ?? 0).toDouble(),
+              taxApplicable: data['taxApplicable'] ?? false,
+              useremail: data['useremail'] ?? '',
+            );
+          }).toList();
 
           return ListView.builder(
-            itemCount: items.length,
+            itemCount: services.length,
             itemBuilder: (context, index) {
-              final item = items[index].data() as Map<String, dynamic>;
-              final description = item['description'] ?? 'No description';
-              final unitPrice = item['unitPrice']?.toString() ?? 'No price';
-              final isService = item['isService'] ?? false;
-              final discount = item['discount']?.toString() ?? 'No discount';
-              final taxApplicable = item['taxApplicable'] ?? false;
-
+              final service = services[index];
               return ListTile(
-                title: Text(description),
-                subtitle: Text('Price: $unitPrice\nDiscount: $discount%\nTax Applicable: ${taxApplicable ? "Yes" : "No"}'),
-                trailing: isService ? const Icon(Icons.miscellaneous_services) : const Icon(Icons.shopping_bag),
+                title: Text(service.name),
+                subtitle: Text('Unit Price: \$${service.unitPrice}\nDescription: ${service.description}'),
               );
             },
           );

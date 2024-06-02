@@ -2,20 +2,22 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:invoice_maker/providers/auth_provider.dart';
-import 'package:invoice_maker/ui/components/invoice.dart';
 import '../../models/invoice_item.dart';
+import '../../models/invoice_details.dart';
 import '../../providers/invoice_provider.dart';
 import '../add_business_page.dart';
 import 'create_client.dart';
 
-class AddInvoiceScreen extends ConsumerStatefulWidget {
-  const AddInvoiceScreen({super.key});
+class EditInvoiceScreen extends ConsumerStatefulWidget {
+  final InvoiceDetails invoiceDetails;
+
+  const EditInvoiceScreen({required this.invoiceDetails, Key? key}) : super(key: key);
 
   @override
-  _AddInvoiceScreenState createState() => _AddInvoiceScreenState();
+  _EditInvoiceScreenState createState() => _EditInvoiceScreenState();
 }
 
-class _AddInvoiceScreenState extends ConsumerState<AddInvoiceScreen> {
+class _EditInvoiceScreenState extends ConsumerState<EditInvoiceScreen> {
   final List<InvoiceItem> _items = <InvoiceItem>[];
   final _formKey = GlobalKey<FormState>();
 
@@ -41,7 +43,47 @@ class _AddInvoiceScreenState extends ConsumerState<AddInvoiceScreen> {
   @override
   void initState() {
     super.initState();
+    _loadInvoiceDetails();
     _itemNameController.addListener(_onItemNameChanged);
+  }
+
+  void _loadInvoiceDetails() {
+    final invoice = widget.invoiceDetails;
+    final invoiceData = invoice.invoiceData;
+    final clientData = invoice.clientData;
+    final businessData = invoice.businessData;
+
+    _clientController.text = clientData['name'];
+    _businessController.text = businessData['name'];
+    _dueDateController.text = invoiceData['dueDate'] ?? '';
+    _termsController.text = invoiceData['terms'] ?? '';
+    _taxRateController.text = (invoiceData['taxRate'] ?? 0).toString();
+    _amountPaidController.text = (invoice.amountPaid ?? 0).toString();
+
+    _selectedClientId = invoiceData['clientId'];
+    _remainingAmount = invoice.remainingAmount;
+
+    for (String itemId in invoiceData['items']) {
+      FirebaseFirestore.instance.collection('items').doc(itemId).get().then((itemDoc) {
+        if (itemDoc.exists) {
+          final itemData = itemDoc.data()!;
+          final item = InvoiceItem(
+            id: itemId,
+            name: itemData['name'] ?? '',
+            description: itemData['description'] ?? '',
+            unitPrice: (itemData['unitPrice'] ?? 0).toDouble(),
+            quantity: (itemData['quantity'] ?? 1) as int,
+            isService: itemData['isService'] ?? false,
+            discount: (itemData['discount'] ?? 0).toDouble(),
+            taxApplicable: itemData['taxApplicable'] ?? false,
+            useremail: itemData['useremail'] ?? '',
+          );
+          setState(() {
+            _items.add(item);
+          });
+        }
+      });
+    }
   }
 
   void _onItemNameChanged() {
@@ -128,8 +170,7 @@ class _AddInvoiceScreenState extends ConsumerState<AddInvoiceScreen> {
     setState(() {});
   }
 
-  Future<void> _addInvoice() async {
-    final invComp = InvoiceComp();
+  Future<void> _updateInvoice() async {
     final user = ref.read(fireBaseAuthProvider).currentUser!;
     if (_items.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -145,7 +186,7 @@ class _AddInvoiceScreenState extends ConsumerState<AddInvoiceScreen> {
         'context': context
       }).future);
       final itemIds = _items.map((item) => item.id).toList();
-      final newInvoiceId = await invComp.generateInvoiceId();
+
       final invoice = {
         'useremail': user.email,
         'clientId': _selectedClientId,
@@ -153,13 +194,14 @@ class _AddInvoiceScreenState extends ConsumerState<AddInvoiceScreen> {
         'items': itemIds,
         'taxRate': double.parse(_taxRateController.text),
         'createdAt': Timestamp.now(),
-        'dueDate': _dueDateController.text, // Add due date field
-        'terms': _termsController.text, // Add terms and conditions field
-        'invoiceId' : newInvoiceId
+        'dueDate': _dueDateController.text,
+        'terms': _termsController.text,
+        'amountPaid': double.parse(_amountPaidController.text),
+        'remainingAmount': _remainingAmount,
       };
 
-      await ref.read(addInvoiceProvider(invoice).future);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invoice added')));
+      await FirebaseFirestore.instance.collection('invoices').doc(widget.invoiceDetails.id).update(invoice);
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invoice updated')));
       Navigator.pop(context);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -167,6 +209,7 @@ class _AddInvoiceScreenState extends ConsumerState<AddInvoiceScreen> {
       ));
     }
   }
+
   @override
   void dispose() {
     _clientController.dispose();
@@ -226,7 +269,7 @@ class _AddInvoiceScreenState extends ConsumerState<AddInvoiceScreen> {
     final user = ref.watch(fireBaseAuthProvider).currentUser;
     if (user == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Add Invoice')),
+        appBar: AppBar(title: const Text('Edit Invoice')),
         body: const Center(child: Text('No user logged in')),
       );
     }
@@ -235,7 +278,7 @@ class _AddInvoiceScreenState extends ConsumerState<AddInvoiceScreen> {
       onWillPop: _onWillPop,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Add Invoice'),
+          title: const Text('Edit Invoice'),
         ),
         body: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -395,7 +438,7 @@ class _AddInvoiceScreenState extends ConsumerState<AddInvoiceScreen> {
                 ..._items.map((item) {
                   final index = _items.indexOf(item);
                   return ListTile(
-                    title: Text('${item.name} - ${item.quantity} x \$${item.unitPrice.toStringAsFixed(2)}'),
+                    title: Text('${item.description} - ${item.quantity} x \$${item.unitPrice.toStringAsFixed(2)}'),
                     subtitle: Text('Discount: ${item.discount}%\nTax Applicable: ${item.taxApplicable ? "Yes" : "No"}'),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -493,8 +536,8 @@ class _AddInvoiceScreenState extends ConsumerState<AddInvoiceScreen> {
                 Text('Remaining Amount: ₨$_remainingAmount', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 16),
                 ElevatedButton(
-                  onPressed: _addInvoice,
-                  child: const Text('Add Invoice'),
+                  onPressed: _updateInvoice,
+                  child: const Text('Update Invoice'),
                 ),
               ],
             ),

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import 'package:invoice_maker/providers/auth_provider.dart';
 import 'error_screen.dart';
 import 'home_screen.dart';
@@ -8,10 +7,6 @@ import 'login_screen.dart';
 
 class AuthChecker extends ConsumerWidget {
   const AuthChecker({super.key});
-
-  //  Notice here we aren't using stateless/statefull widget. Instead we are using
-  //  a custom widget that is a consumer of the state.
-  //  So if any data changes in the state, the widget will be updated.
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

@@ -10,8 +10,10 @@ class Invoice {
   final double taxRate; // Tax rate in percentage (0-100)
   final double amountPaid; // Amount already paid
   final DateTime dateOfPaymentDue; // Due date for payment
+  final String invoiceId;
 
   Invoice({
+    required this.invoiceId,
     required this.useremail,
     required this.businessDetails,
     required this.clientDetails,
