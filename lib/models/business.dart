@@ -1,10 +1,10 @@
 class Business {
-  String useremail;
-  String name;
-  String address;
-  String phoneNumber;
-  String email;
-  String abn; // Added ABN field
+  final String useremail;
+  final String name;
+  final String address;
+  final String phoneNumber;
+  final String email;
+  final String abn;
 
   Business({
     required this.useremail,
@@ -12,22 +12,20 @@ class Business {
     required this.address,
     required this.phoneNumber,
     required this.email,
-    required this.abn, // Added ABN field
+    required this.abn,
   });
 
-  // Factory constructor for creating a Business object from a map
   factory Business.fromJson(Map<String, dynamic> json) {
     return Business(
-      useremail: json['useremail'],
-      name: json['name'],
-      address: json['address'],
-      phoneNumber: json['phoneNumber'],
-      email: json['email'],
-      abn: json['abn'], // Added ABN field
+      useremail: json['useremail'] ?? '',
+      name: json['name'] ?? '',
+      address: json['address'] ?? '',
+      phoneNumber: json['phoneNumber'] ?? '',
+      email: json['email'] ?? '',
+      abn: json['abn'] ?? '',
     );
   }
 
-  // Method to convert Business object to a map
   Map<String, dynamic> toJson() {
     return {
       'useremail': useremail,
@@ -35,12 +33,7 @@ class Business {
       'address': address,
       'phoneNumber': phoneNumber,
       'email': email,
-      'abn': abn, // Added ABN field
+      'abn': abn,
     };
-  }
-
-  @override
-  String toString() {
-    return 'Business{name: $name, address: $address, phoneNumber: $phoneNumber, email: $email, abn: $abn}';
   }
 }

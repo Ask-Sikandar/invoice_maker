@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:invoice_maker/providers/auth_provider.dart';
 import '../../models/invoice_item.dart';
+import '../../models/business.dart';
+import '../../models/client.dart';
+import '../../models/invoice.dart';
 import '../../providers/invoice_provider.dart';
 import '../add_business_page.dart';
 import 'create_client.dart';
@@ -25,14 +28,20 @@ class _AddQuoteScreenState extends ConsumerState<AddQuoteScreen> {
   final _unitPriceController = TextEditingController();
   final _quantityController = TextEditingController();
   final _discountController = TextEditingController();
+  final _dueDateController = TextEditingController();
+  final _termsController = TextEditingController();
+  final _amountPaidController = TextEditingController(); // Added controller
   bool _isService = false;
   bool _taxApplicable = false;
   final _taxRateController = TextEditingController();
 
   bool _dataChanged = false;
+  String? _selectedClientId;
+  String? _selectedBusinessId;
 
   void _addItem() async {
-    if (_itemDescController.text.isNotEmpty &&
+    if (_itemNameController.text.isNotEmpty &&
+        _itemDescController.text.isNotEmpty &&
         _unitPriceController.text.isNotEmpty &&
         _quantityController.text.isNotEmpty &&
         _discountController.text.isNotEmpty) {
@@ -76,31 +85,48 @@ class _AddQuoteScreenState extends ConsumerState<AddQuoteScreen> {
       return;
     }
 
-    if (_formKey.currentState!.validate()) {
-      final clientId = await ref.read(getClientProvider({
-        'name': _clientController.text,
-        'userEmail': user.email!,
-        'context': context
-      }).future);
-      final businessId = await ref.read(getBusinessProvider({
-        'name': _businessController.text,
-        'userEmail': user.email!,
-        'context': context
-      }).future);
-      final itemIds = _items.map((item) => item.id).toList();
+    if (_formKey.currentState!.validate() && _selectedClientId != null && _selectedBusinessId != null) {
+      final businessDoc = await FirebaseFirestore.instance.collection('businesses').doc(_selectedBusinessId).get();
+      final clientDoc = await FirebaseFirestore.instance.collection('clients').doc(_selectedClientId).get();
 
-      final invoice = {
-        'useremail': user.email,
-        'clientId': clientId,
-        'businessId': businessId,
-        'items': itemIds,
-        'taxRate': double.parse(_taxRateController.text),
-        'createdAt': Timestamp.now(),
-      };
+      if (!businessDoc.exists || !clientDoc.exists) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Invalid client or business selection'),
+        ));
+        return;
+      }
+
+      final businessData = businessDoc.data();
+      final clientData = clientDoc.data();
+
+      if (businessData == null || clientData == null) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Error fetching client or business data'),
+        ));
+        return;
+      }
+
+      final business = Business.fromJson(businessData);
+      final client = Client.fromMap(_selectedClientId!, clientData);
+
+      final invoice = Invoice(
+        id: '',
+        useremail: user.email!,
+        businessDetails: business,
+        clientDetails: client,
+        items: _items,
+        taxRate: double.parse(_taxRateController.text),
+        amountPaid: double.parse(_amountPaidController.text),
+        dateOfPaymentDue: DateTime.parse(_dueDateController.text),
+      );
 
       await ref.read(addInvoiceProvider(invoice).future);
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invoice added')));
       Navigator.pop(context);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Please select a client or fill all the required fields'),
+      ));
     }
   }
 
@@ -114,7 +140,24 @@ class _AddQuoteScreenState extends ConsumerState<AddQuoteScreen> {
     _quantityController.dispose();
     _discountController.dispose();
     _taxRateController.dispose();
+    _dueDateController.dispose();
+    _termsController.dispose();
+    _amountPaidController.dispose(); // Dispose amount paid controller
     super.dispose();
+  }
+
+  Future<void> _selectDueDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime(2101),
+    );
+    if (picked != null) {
+      setState(() {
+        _dueDateController.text = picked.toLocal().toString().split(' ')[0];
+      });
+    }
   }
 
   Future<bool> _onWillPop() async {
@@ -165,48 +208,60 @@ class _AddQuoteScreenState extends ConsumerState<AddQuoteScreen> {
             child: ListView(
               children: [
                 const Text('Client Details', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                Autocomplete<String>(
-                  optionsBuilder: (TextEditingValue textEditingValue) async {
-                    if (textEditingValue.text.isEmpty) {
-                      return [];
-                    }
-                    final clients = await FirebaseFirestore.instance
-                        .collection('clients')
-                        .where('name', isGreaterThanOrEqualTo: textEditingValue.text)
-                        .where('useremail', isEqualTo: user.email)
-                        .where('name', isLessThanOrEqualTo: '${textEditingValue.text}\uf8ff')
-                        .get();
-                    return clients.docs.map((doc) => doc.data()['name'].toString()).toList();
-                  },
-                  onSelected: (String selection) {
-                    _clientController.text = selection;
-                  },
-                  fieldViewBuilder: (BuildContext context, TextEditingController fieldTextEditingController, FocusNode focusNode, VoidCallback onFieldSubmitted) {
-                    return TextFormField(
-                      controller: fieldTextEditingController,
-                      focusNode: focusNode,
-                      decoration: InputDecoration(
-                        labelText: 'Client Name',
-                        suffixIcon: InkWell(
-                          onTap: () async {
-                            final newClient = await Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => AddClientScreen(clientName: _clientController.text)),
-                            );
-                            if (newClient != null) {
-                              _clientController.text = newClient.name;
+                Consumer(
+                  builder: (context, watch, child) {
+                    final searchClientState = ref.watch(searchClientsProvider(_clientController.text));
+                    return searchClientState.when(
+                      data: (clients) {
+                        return Autocomplete<Map<String, dynamic>>(
+                          optionsBuilder: (TextEditingValue textEditingValue) {
+                            if (textEditingValue.text.isEmpty) {
+                              return const Iterable<Map<String, dynamic>>.empty();
                             }
+                            final List<Map<String, dynamic>> clientOptions = clients
+                                .where((client) => client['name'].toString().toLowerCase().contains(textEditingValue.text.toLowerCase()))
+                                .toList();
+
+                            return clientOptions;
                           },
-                          child: const Padding(
-                            padding: EdgeInsets.all(8.0),
-                            child: Text(
-                              'Add new client',
-                              style: TextStyle(color: Colors.blue),
-                            ),
-                          ),
-                        ),
-                      ),
-                      validator: (value) => value!.isEmpty ? 'Please enter client name' : null,
+                          displayStringForOption: (Map<String, dynamic> option) => option['name'] as String,
+                          onSelected: (Map<String, dynamic> selection) {
+                            _clientController.text = selection['name'] as String;
+                            _selectedClientId = selection['id'] as String;
+                          },
+                          fieldViewBuilder: (BuildContext context, TextEditingController fieldTextEditingController, FocusNode focusNode, VoidCallback onFieldSubmitted) {
+                            return TextFormField(
+                              controller: fieldTextEditingController,
+                              focusNode: focusNode,
+                              decoration: InputDecoration(
+                                labelText: 'Client Name',
+                                suffixIcon: InkWell(
+                                  onTap: () async {
+                                    final newClient = await Navigator.push(
+                                      context,
+                                      MaterialPageRoute(builder: (context) => AddClientScreen(clientName: _clientController.text)),
+                                    );
+                                    if (newClient != null) {
+                                      _clientController.text = newClient.name;
+                                      _selectedClientId = newClient.id;
+                                    }
+                                  },
+                                  child: const Padding(
+                                    padding: EdgeInsets.all(8.0),
+                                    child: Text(
+                                      'Add new client',
+                                      style: TextStyle(color: Colors.blue),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              validator: (value) => value!.isEmpty ? 'Please enter client name' : null,
+                            );
+                          },
+                        );
+                      },
+                      loading: () => const Center(child: CircularProgressIndicator()),
+                      error: (error, stackTrace) => Center(child: Text('Error: $error')),
                     );
                   },
                 ),
@@ -225,8 +280,16 @@ class _AddQuoteScreenState extends ConsumerState<AddQuoteScreen> {
                         .get();
                     return businesses.docs.map((doc) => doc.data()['name'].toString()).toList();
                   },
-                  onSelected: (String selection) {
+                  onSelected: (String selection) async {
                     _businessController.text = selection;
+                    _selectedBusinessId = (await FirebaseFirestore.instance
+                        .collection('businesses')
+                        .where('name', isEqualTo: selection)
+                        .where('useremail', isEqualTo: user.email)
+                        .get())
+                        .docs
+                        .first
+                        .id;
                   },
                   fieldViewBuilder: (BuildContext context, TextEditingController fieldTextEditingController, FocusNode focusNode, VoidCallback onFieldSubmitted) {
                     return TextFormField(
@@ -317,6 +380,29 @@ class _AddQuoteScreenState extends ConsumerState<AddQuoteScreen> {
                   decoration: const InputDecoration(labelText: 'Tax Rate (%)'),
                   keyboardType: TextInputType.number,
                   validator: (value) => value!.isEmpty ? 'Please enter tax rate' : null,
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _dueDateController,
+                  readOnly: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Due Date',
+                    suffixIcon: Icon(Icons.calendar_today),
+                  ),
+                  onTap: () => _selectDueDate(context),
+                  validator: (value) => value!.isEmpty ? 'Please select due date' : null,
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _termsController,
+                  decoration: const InputDecoration(labelText: 'Terms and Conditions'),
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _amountPaidController,
+                  decoration: const InputDecoration(labelText: 'Amount Paid'), // Added amount paid field
+                  keyboardType: TextInputType.number,
+                  validator: (value) => value!.isEmpty ? 'Please enter amount paid' : null,
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton(

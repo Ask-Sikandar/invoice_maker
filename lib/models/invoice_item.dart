@@ -44,5 +44,34 @@ class InvoiceItem {
       useremail: useremail ?? this.useremail,
     );
   }
+
   double get total => unitPrice * quantity * (1 - discount / 100);
+
+  factory InvoiceItem.fromMap(Map<String, dynamic> data) {
+    return InvoiceItem(
+      useremail: data['useremail'],
+      id: data['id'],
+      name: data['name'],
+      description: data['description'],
+      unitPrice: data['unitPrice'],
+      quantity: data['quantity'],
+      isService: data['isService'],
+      discount: data['discount'],
+      taxApplicable: data['taxApplicable'],
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'useremail': useremail,
+      'id': id,
+      'name': name,
+      'description': description,
+      'unitPrice': unitPrice,
+      'quantity': quantity,
+      'isService': isService,
+      'discount': discount,
+      'taxApplicable': taxApplicable,
+    };
+  }
 }

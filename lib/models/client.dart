@@ -17,11 +17,9 @@ class Client {
     required this.phone,
   });
 
-  // Factory method to create a Client from a Firestore document snapshot
-  factory Client.fromDocument(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+  factory Client.fromMap(String id, Map<String, dynamic> data) {
     return Client(
-      id: doc.id,
+      id: id,
       useremail: data['useremail'] ?? '',
       name: data['name'] ?? '',
       address: data['address'] ?? '',
@@ -30,9 +28,9 @@ class Client {
     );
   }
 
-  // Method to convert a Client to a Firestore document map
   Map<String, dynamic> toMap() {
     return {
+      'useremail': useremail,
       'name': name,
       'address': address,
       'email': email,
