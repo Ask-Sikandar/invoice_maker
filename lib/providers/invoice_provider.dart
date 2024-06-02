@@ -4,9 +4,14 @@ import '../models/invoice_details.dart';
 import 'auth_provider.dart';
 import '../../models/invoice_item.dart';
 import '../repository/invoice_repository.dart';
+import 'client_provider.dart';
 
 final invoiceRepositoryProvider = Provider((ref) => InvoiceRepository());
 
+final searchClientsProvider = FutureProvider.family<List<Map<String, dynamic>>, String>((ref, query) async {
+  final repo = ref.read(clientRepositoryProvider);
+  return await repo.searchClients(query);
+});
 final getClientProvider = FutureProvider.family<String, Map<String, dynamic>>((ref, params) async {
   final repo = ref.read(invoiceRepositoryProvider);
   return await repo.getOrCreateClient(params['name'], params['userEmail'], params['context']);

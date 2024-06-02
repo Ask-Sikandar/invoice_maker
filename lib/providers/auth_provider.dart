@@ -1,29 +1,72 @@
-import 'package:invoice_maker/models/auth_model.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+// lib/providers/auth_provider.dart
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../repository/auth_repository.dart';
 
-
-final authenticationProvider = Provider<Authentication>((ref) {
-  return Authentication();
+final authRepositoryProvider = Provider<AuthRepository>((ref) {
+  return AuthRepository();
 });
 
-//  Here I have shared the example of a provider used within a provider.
-// keep in mind I am reading a provider from a provider not watching it.
-//  The docs mention not to use watch in a provider. This is bad for performance
-//  if the data changes conitnously your app will suck bad
-
-final authStateProvider = StreamProvider<User?>((ref) {
-  return ref.read(authenticationProvider).authStateChange;
-});
-
-//  There are different Types of Provider
-//  Provider<T> is the most basic type of provider
-//  FutureProvider<T> which involes a Future
-//  StreamProvider<T> which involves a Stream
-//  and many more. Refer to their docs for more info
-
-//  Creating a firebaseAuthProvider to get some basic details of the loggedIn user
-//  though we can store it in database but for now we will just use it to get the user
 final fireBaseAuthProvider = Provider<FirebaseAuth>((ref) {
   return FirebaseAuth.instance;
+});
+
+final authStateProvider = StreamProvider<User?>((ref) {
+  final authRepository = ref.watch(authRepositoryProvider);
+  return authRepository.authStateChanges;
+});
+
+class SignInStateNotifier extends StateNotifier<bool> {
+  SignInStateNotifier(this.ref) : super(false);
+
+  final Ref ref;
+
+  Future<User?> signInWithGoogle() async {
+    try {
+      state = true;
+      final authRepository = ref.read(authRepositoryProvider);
+      final user = await authRepository.signInWithGoogle();
+      return user;
+    } catch (e) {
+      throw e;
+    } finally {
+      state = false;
+    }
+  }
+
+  Future<User?> signInWithEmailAndPassword(String email, String password) async {
+    try {
+      state = true;
+      final authRepository = ref.read(authRepositoryProvider);
+      final user = await authRepository.signInWithEmailAndPassword(email, password);
+      return user;
+    } catch (e) {
+      throw e;
+    } finally {
+      state = false;
+    }
+  }
+
+  Future<User?> signUpWithEmailAndPassword(String email, String password) async {
+    try {
+      state = true;
+      final authRepository = ref.read(authRepositoryProvider);
+      final user = await authRepository.signUpWithEmailAndPassword(email, password);
+      return user;
+    } catch (e) {
+      throw e;
+    } finally {
+      state = false;
+    }
+  }
+
+  Future<void> signOut() async {
+    final authRepository = ref.read(authRepositoryProvider);
+    await authRepository.signOut();
+  }
+}
+
+final signInStateProvider = StateNotifierProvider<SignInStateNotifier, bool>((ref) {
+  return SignInStateNotifier(ref);
 });

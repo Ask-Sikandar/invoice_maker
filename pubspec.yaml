@@ -45,6 +45,7 @@ dependencies:
   cloud_firestore: ^4.17.3
   pdf: ^3.10.8
   printing: ^5.12.0
+  flutter_launcher_icons: ^0.13.1
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -59,22 +60,25 @@ dev_dependencies:
   build_runner: ^2.4.9
   custom_lint: ^0.6.4
   riverpod_lint: ^2.3.10
-
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/easy_invoice.png"
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
 # The following section is specific to Flutter packages.
 flutter:
-
+  assets:
+    - assets/images/easy_invoice.png
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
 
   # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
+#assets:
+# - Assets/easy_invoice.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware
@@ -101,3 +105,5 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/custom-fonts/#from-packages
+
+

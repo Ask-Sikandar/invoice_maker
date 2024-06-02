@@ -5,7 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:invoice_maker/providers/ui.dart';
 import 'package:invoice_maker/ui/components/home_page_icon_buttons.dart';
 import 'package:invoice_maker/ui/home_screens/create_invoice_screen.dart';
+import 'package:invoice_maker/ui/home_screens/create_quote_screen.dart';
 import 'package:invoice_maker/ui/home_screens/profile_page.dart';
+import 'package:invoice_maker/ui/home_screens/quotes_screen.dart';
 import '../../providers/auth_provider.dart';
 
 class Home extends ConsumerStatefulWidget {
@@ -37,8 +39,13 @@ class _HomeState extends ConsumerState<Home> {
           Navigator.push(context,
               MaterialPageRoute(builder: (context) => const AddInvoiceScreen()));
         }, icon: const Icon(CupertinoIcons.doc_text), label: 'New Invoice'),
-        HomePageIconButtons(onPressed: () {}, icon: const Icon(CupertinoIcons.chart_pie), label: 'Quotes'),
-        HomePageIconButtons(onPressed: () {}, icon: const Icon(CupertinoIcons.add_circled), label: 'New Quote'),
+        HomePageIconButtons(onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const QuotesScreen())),
+            icon: const Icon(CupertinoIcons.chart_pie), label: 'Quotes'),
+        HomePageIconButtons(onPressed: () {
+          Navigator.push(context, MaterialPageRoute(builder: (Context) => const AddQuoteScreen()));
+        }, icon: const Icon(CupertinoIcons.add_circled), label: 'New Quote'),
         HomePageIconButtons(onPressed: () {
           ref.read(homeScreenCounterProvider.notifier).state = 2;
         }, icon: const Icon(Icons.people), label: 'Clients'),

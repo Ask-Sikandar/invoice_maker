@@ -1,37 +1,66 @@
-
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class AddClientScreen extends ConsumerWidget {
+import '../../providers/client_provider.dart';
+
+class AddClientScreen extends ConsumerStatefulWidget {
   final String? clientName;
-  Future<dynamic> _addClient(context, String name, String email, String phone) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      final clientRef = await FirebaseFirestore.instance.collection('clients').add({
-        'name': name,
-        'email': email,
-        'phone': phone,
-        'userId': user.uid,
-        'createdAt': Timestamp.now(),
-      }).then((_) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Client added')));
-      }).catchError((error){
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed due to error $error')));
-      });
-      return clientRef;
-    }
-  }
+
   const AddClientScreen({super.key, this.clientName});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final clientNameController = TextEditingController(text: clientName);
-    final clientPhoneController = TextEditingController();
-    final clientEmailController = TextEditingController();
-    final clientAddressController = TextEditingController();
+  _AddClientScreenState createState() => _AddClientScreenState();
+}
 
+class _AddClientScreenState extends ConsumerState<AddClientScreen> {
+  final clientNameController = TextEditingController();
+  final clientPhoneController = TextEditingController();
+  final clientEmailController = TextEditingController();
+  final clientAddressController = TextEditingController();
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    clientNameController.text = widget.clientName ?? '';
+  }
+
+  Future<void> _addClient() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    final clientData = {
+      'name': clientNameController.text,
+      'email': clientEmailController.text,
+      'phone': clientPhoneController.text,
+      'address': clientAddressController.text,
+    };
+
+    try {
+      await ref.read(addClientProvider(clientData).future);
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Client added')));
+      Navigator.pop(context, clientData);
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.toString())));
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    clientNameController.dispose();
+    clientPhoneController.dispose();
+    clientEmailController.dispose();
+    clientAddressController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Add New Client'),
@@ -56,25 +85,11 @@ class AddClientScreen extends ConsumerWidget {
               controller: clientAddressController,
               decoration: const InputDecoration(labelText: 'Client Address'),
             ),
-            // Add other client fields
-            ElevatedButton(
-              onPressed: () async {
-                final user = FirebaseAuth.instance.currentUser;
-                if (user != null) {
-                  final clientRef = await FirebaseFirestore.instance.collection('clients').add({
-                    'name': clientNameController.text,
-                    'email': clientEmailController.text,
-                    'phone': clientPhoneController.text,
-                    'useremail': user.email,
-                    'createdAt': Timestamp.now(),
-                  }).then((_) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Client added')));
-                  }).catchError((error){
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed due to error $error')));
-                  });
-                  Navigator.pop(context, clientRef);
-                }
-              },
+            const SizedBox(height: 20),
+            _isLoading
+                ? const CircularProgressIndicator()
+                : ElevatedButton(
+              onPressed: _addClient,
               child: const Text('Add Client'),
             ),
           ],

@@ -12,7 +12,28 @@
           "package_name": "com.example.invoice_maker"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "871935467774-cc3pn7i7gbfrgd2rg95s4qr5p51dp6r5.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.invoice_maker",
+            "certificate_hash": "785e8d65b2ddede28a8f3491cb771aa2b6c04ff0"
+          }
+        },
+        {
+          "client_id": "871935467774-v25mik3508dra52j49tgktapmamcodnk.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.invoice_maker",
+            "certificate_hash": "b7b7bf978d2317837c879b3c9ab7bf54e3c13459"
+          }
+        },
+        {
+          "client_id": "871935467774-cap5pn27bktdtotenbbb4eb8mqe8bsas.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCAbyNf6n7ihyDgO1tgWapt7_WB6tit71w"
@@ -20,7 +41,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "871935467774-cap5pn27bktdtotenbbb4eb8mqe8bsas.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "871935467774-mfse4mvv1t7kqbf4gidmt41oiqhqec4s.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.invoiceMaker"
+              }
+            }
+          ]
         }
       }
     }

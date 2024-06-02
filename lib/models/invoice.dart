@@ -8,6 +8,8 @@ class Invoice {
   final Client clientDetails;
   final List<InvoiceItem> items;
   final double taxRate; // Tax rate in percentage (0-100)
+  final double amountPaid; // Amount already paid
+  final DateTime dateOfPaymentDue; // Due date for payment
 
   Invoice({
     required this.useremail,
@@ -15,6 +17,8 @@ class Invoice {
     required this.clientDetails,
     required this.items,
     required this.taxRate,
+    required this.amountPaid,
+    required this.dateOfPaymentDue,
   });
 
   double get subtotal {
@@ -27,5 +31,9 @@ class Invoice {
 
   double get total {
     return subtotal + tax;
+  }
+
+  double get amountRemaining {
+    return total - amountPaid;
   }
 }

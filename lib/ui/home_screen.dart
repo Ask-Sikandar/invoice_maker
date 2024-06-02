@@ -3,7 +3,6 @@ import 'package:invoice_maker/providers/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:invoice_maker/providers/ui.dart';
-
 import 'home_screens/clients_screen.dart';
 import 'home_screens/home.dart';
 import 'home_screens/invoices_screen.dart';
@@ -23,7 +22,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     const InvoicesPage(),
     const ClientsScreen(),
     const ServicesScreen(),
-    const MorePage()
+    const MorePage(),
   ];
 
   List<String> pages = ['Home', 'Invoices', 'Clients', 'Services/Products', 'More'];
@@ -32,12 +31,11 @@ class _HomePageState extends ConsumerState<HomePage> {
     void onItemTapped(int index){
       ref.read(homeScreenCounterProvider.notifier).state = index;
     }
-    // first variable is to get the data of Authenticated User
+
     final data = ref.watch(fireBaseAuthProvider);
     final counter = ref.watch(homeScreenCounterProvider);
 
-    //  Second variable to access the Logout Function
-    final auth = ref.watch(authenticationProvider);
+    final auth = ref.watch(authRepositoryProvider);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Invoice Maker'),
