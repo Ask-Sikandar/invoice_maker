@@ -9,7 +9,7 @@ import 'package:pdf/widgets.dart' as pw;
 import '../../models/invoice_details.dart';
 import '../../providers/invoice_provider.dart';
 import '../components/pdf_maker.dart';
-import 'edit_invoice_screen.dart'; // Import the new file
+import 'edit_invoice_screen.dart';
 
 class InvoicesPage extends ConsumerStatefulWidget {
   const InvoicesPage({super.key});
@@ -24,11 +24,7 @@ class _InvoicesPageState extends ConsumerState<InvoicesPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Invoices'),
-      ),
-      body: Column(
+    return Column(
         children: [
           Expanded(
             child: Consumer(
@@ -49,6 +45,7 @@ class _InvoicesPageState extends ConsumerState<InvoicesPage> {
                         final businessData = invoiceDetails.businessData;
 
                         return ListTile(
+                          leading: invoiceData['amountRemaining'] == 0 ? const Icon(Icons.check_circle_outline) : const Icon(Icons.radio_button_unchecked),
                           title: Text('Client: ${clientData['name']}'),
                           subtitle: Text('Business: ${businessData['name']}'),
                           trailing: IconButton(
@@ -78,7 +75,6 @@ class _InvoicesPageState extends ConsumerState<InvoicesPage> {
             ],
           ),
         ],
-      ),
     );
   }
 
@@ -114,7 +110,7 @@ class _InvoicesPageState extends ConsumerState<InvoicesPage> {
                         return const Text('Item not found');
                       } else {
                         final itemData = snapshot.data!.data() as Map<String, dynamic>;
-                        return Text('${itemData['description']} - ${itemData['quantity']} x ${itemData['unitPrice']}');
+                        return Text('${itemData['name']} - ${itemData['quantity']} x ${itemData['unitPrice']}');
                       }
                     },
                   );

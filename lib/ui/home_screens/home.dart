@@ -42,10 +42,10 @@ class _HomeState extends ConsumerState<Home> {
         HomePageIconButtons(onPressed: () => Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const QuotesScreen())),
-            icon: const Icon(CupertinoIcons.chart_pie), label: 'Quotes'),
+            icon: const Icon(CupertinoIcons.chart_pie), label: 'Quotes(X)'),
         HomePageIconButtons(onPressed: () {
           Navigator.push(context, MaterialPageRoute(builder: (Context) => const AddQuoteScreen()));
-        }, icon: const Icon(CupertinoIcons.add_circled), label: 'New Quote'),
+        }, icon: const Icon(CupertinoIcons.add_circled), label: 'New Quote(X)'),
         HomePageIconButtons(onPressed: () {
           ref.read(homeScreenCounterProvider.notifier).state = 2;
         }, icon: const Icon(Icons.people), label: 'Clients'),

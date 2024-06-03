@@ -56,19 +56,36 @@ class _AddInvoiceScreenState extends ConsumerState<AddInvoiceScreen> {
         _unitPriceController.text.isNotEmpty &&
         _quantityController.text.isNotEmpty &&
         _discountController.text.isNotEmpty) {
+
+      // Parsing values and creating new item
       final user = ref.read(fireBaseAuthProvider).currentUser!;
+      final String itemName = _itemNameController.text;
+      final String itemDescription = _itemDescController.text;
+      final double unitPrice = double.parse(_unitPriceController.text);
+      final int quantity = int.parse(_quantityController.text);
+      final double discount = double.parse(_discountController.text);
+
+      print('Item Name: $itemName');
+      print('Item Description: $itemDescription');
+      print('Unit Price: $unitPrice');
+      print('Quantity: $quantity');
+      print('Discount: $discount');
+      print('Is Service: $_isService');
+      print('Tax Applicable: $_taxApplicable');
+
       final newItem = InvoiceItem(
         id: '',
-        name: _itemNameController.text,
-        description: _itemDescController.text,
-        unitPrice: double.parse(_unitPriceController.text),
-        quantity: int.parse(_quantityController.text),
+        name: itemName,
+        description: itemDescription,
+        unitPrice: unitPrice,
+        quantity: quantity,
         isService: _isService,
-        discount: double.parse(_discountController.text),
+        discount: discount,
         taxApplicable: _taxApplicable,
         useremail: user.email!,
       );
 
+      // Adding item to the database and then updating the state
       final itemId = await ref.read(addItemProvider(newItem).future);
       setState(() {
         _items.add(newItem.copyWith(id: itemId));
@@ -80,6 +97,9 @@ class _AddInvoiceScreenState extends ConsumerState<AddInvoiceScreen> {
         _isService = false;
         _taxApplicable = false;
         _calculateRemainingAmount();
+
+        // Debug the added item
+        print('Added Item: ${newItem.toString()}');
       });
     } else {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -153,8 +173,8 @@ class _AddInvoiceScreenState extends ConsumerState<AddInvoiceScreen> {
         'items': itemIds,
         'taxRate': double.parse(_taxRateController.text),
         'createdAt': Timestamp.now(),
-        'dueDate': _dueDateController.text, // Add due date field
-        'terms': _termsController.text, // Add terms and conditions field
+        'dueDate': _dueDateController.text,
+        'terms': _termsController.text,
         'invoiceId' : newInvoiceId
       };
 
@@ -493,6 +513,7 @@ class _AddInvoiceScreenState extends ConsumerState<AddInvoiceScreen> {
                 Text('Remaining Amount: ₨$_remainingAmount', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 16),
                 ElevatedButton(
+                  key: const Key('Add Invoice'),
                   onPressed: _addInvoice,
                   child: const Text('Add Invoice'),
                 ),

@@ -26,42 +26,72 @@ class _HomePageState extends ConsumerState<HomePage> {
   ];
 
   List<String> pages = ['Home', 'Invoices', 'Clients', 'Services/Products', 'More'];
-@override
-  Widget build(BuildContext context) {
-    void onItemTapped(int index){
-      ref.read(homeScreenCounterProvider.notifier).state = index;
-    }
-
-    final data = ref.watch(fireBaseAuthProvider);
-    final counter = ref.watch(homeScreenCounterProvider);
-
+  void _showLogoutConfirmation(BuildContext context) {
     final auth = ref.watch(authRepositoryProvider);
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Invoice Maker'),
-        actions: [
-          IconButton(onPressed: () => auth.signOut(), icon: const Icon(Icons.logout))
-        ],
-      ),
-      body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(18.0),
-            child: _homePages.elementAt(counter),
-          )
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        items:  const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(CupertinoIcons.doc_text_fill), label: 'Invoices'),
-          BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Clients'),
-          BottomNavigationBarItem(icon: Icon(Icons.inventory), label: 'Services'),
-          BottomNavigationBarItem(icon: Icon(Icons.arrow_circle_right), label: 'More'),
-        ],
-        currentIndex: counter,
-        selectedItemColor: Colors.amber[800],
-        onTap: onItemTapped,
-      ),
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Confirm Logout'),
+          content: Text('Are you sure you want to logout?'),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Cancel'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: Text('Logout'),
+              onPressed: () {
+                auth.signOut();
+                // Perform the logout operation here
+              },
+            ),
+          ],
+        );
+      },
     );
   }
-}
+
+    @override
+    Widget build(BuildContext context) {
+      void onItemTapped(int index){
+        ref.read(homeScreenCounterProvider.notifier).state = index;
+      }
+
+      final data = ref.watch(fireBaseAuthProvider);
+      final counter = ref.watch(homeScreenCounterProvider);
+
+      final auth = ref.watch(authRepositoryProvider);
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Invoice Maker'),
+          actions: [
+            IconButton(onPressed: () {
+              _showLogoutConfirmation(context);
+            }, icon: const Icon(Icons.logout))
+          ],
+        ),
+        body: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(18.0),
+              child: _homePages.elementAt(counter),
+            )
+        ),
+        bottomNavigationBar: BottomNavigationBar(
+          type: BottomNavigationBarType.fixed,
+          items:  const <BottomNavigationBarItem>[
+            BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+            BottomNavigationBarItem(icon: Icon(CupertinoIcons.doc_text_fill), label: 'Invoices'),
+            BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Clients'),
+            BottomNavigationBarItem(icon: Icon(Icons.inventory), label: 'Services'),
+            BottomNavigationBarItem(icon: Icon(Icons.arrow_circle_right), label: 'Unimplemented'),
+          ],
+          currentIndex: counter,
+          selectedItemColor: Colors.amber[800],
+          onTap: onItemTapped,
+        ),
+      );
+    }
+  }
